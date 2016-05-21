@@ -1,0 +1,66 @@
+---
+title: "Course Project"
+author: "Melissa Macasieb"
+date: "May 21, 2016"
+output: html_document
+---
+
+### Project Description
+
+Using data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants, we determine the best model to predict whether a dumbbell was lifted correctly or incorrectly (in 5 different ways) by the subject.  The initial dataset contains roughly 150 measurements taken from 19622 subjects.
+
+The data and description of the measurements taken can be found here http://groupware.les.inf.puc-rio.br/har.
+
+### Feature Selection and Creation Training/Testing sets
+
+We first reduce the number of features in the data by computing the variance of each feature.  We eliminate all those features with near zero variance.  Of the remaining features, we observe that some of these are mostly NAs.  We remove all those features for which the number of NAs is bigger than 87% as well as those that have no impact on the outcome (ID, etc.)  This leaves us with the following 53 features (excluding the outcome classe):
+
+```{r,warning=FALSE, message=FALSE,echo=FALSE}
+library(caret)
+intrain<-read.csv("Train.csv")
+test<-read.csv("Test.csv")
+nsv<-nearZeroVar(intrain,saveMetrics=TRUE)
+v<-nsv[,4]
+intrain2<-intrain[,!v]
+intrain2<-intrain2[,-(1:5)]
+wntg<-which(colSums(is.na(intrain2))>17000)
+intrain3<-intrain2[,-c(wntg)]
+inTrain<-createDataPartition(y=intrain3$classe,p=0.7,list=FALSE)
+training<-intrain3[inTrain,]
+test2<-test[,!v]
+test2<-test2[,-(1:5)]
+testing<-test2[,-c(wntg)]
+validation<-intrain3[-inTrain,]
+names(training)
+```
+
+We also apply these same transformations to the testing set provided.
+
+We see that the training, validation, and final testing sets have the following dimensions:
+
+
+
+```{r}
+dim(training)
+dim(validation)
+dim(testing)
+```
+
+### Model Selection
+
+We train the following models using the caret package: linear discriminant analysis(lda), gradient boosting (gbm), and random forests (rf, growing 10 trees) and find that the random forests method has approximately 99.5% accuracy on the validation set, which is signicantly better than the lda method (approximately 70%) and slighly better than the gbm method (98%).  The accuracy of these models (model_lda, model_gbm, model_rf, respectively) is shown below.  Based on these results, we concluded that the random forests model is the best predictive model for the classe variable.  We also expect that this model has an out of bound estimation rate of 1.87%.
+
+```{r, echo=FALSE}
+mod_rf<-train(classe~.,method="rf", data=training, ntree=10)
+pred_rf<-predict(mod_rf,validation)
+tab1<-table(pred_rf,validation$classe)
+confusionMatrix(tab1)
+```
+### Predictions
+The random forest model gives the following predictions on the classe variable using the testing set:
+```{r, echo=FALSE}
+pred_final<-predict(mod_rf,testing)
+pred_final
+```
+Upon first trial, we get a 100% success rate on these test cases in the quiz.
+
